@@ -122,7 +122,13 @@ describe('notebook rendering', () => {
     expect(screen.getByAltText('Chart of monthly totals')).toBeTruthy()
   })
 
-  it('prefers gif/webp/bmp/tiff images over a text/plain fallback', () => {
+  it.each([
+    { mime: 'image/gif', showsImage: true },
+    { mime: 'image/webp', showsImage: true },
+    { mime: 'image/bmp', showsImage: true },
+    // Chromium/Electron cannot decode TIFF, so the legible text/plain fallback must win.
+    { mime: 'image/tiff', showsImage: false }
+  ])('ranks $mime against a text/plain fallback', ({ mime, showsImage }) => {
     const notebook = parseIpynb(
       JSON.stringify({
         nbformat: 4,
@@ -140,7 +146,7 @@ describe('notebook rendering', () => {
                 output_type: 'display_data',
                 data: {
                   'text/plain': 'fallback',
-                  'image/gif': 'R0lGODdhAQABAIAAAP///////ywAAAAAAQABAAACAkQBADs='
+                  [mime]: 'R0lGODdhAQABAIAAAP///////ywAAAAAAQABAAACAkQBADs='
                 },
                 metadata: {}
               }
@@ -151,8 +157,13 @@ describe('notebook rendering', () => {
     )
     expect(notebook.cells[0].outputs[0]).toMatchObject({ kind: 'display' })
     render(<IpynbCellOutputs cell={notebook.cells[0]} />)
-    expect(screen.getByRole('img')).toBeTruthy()
-    expect(screen.queryByText('fallback')).toBeNull()
+    if (showsImage) {
+      expect(screen.getByRole('img')).toBeTruthy()
+      expect(screen.queryByText('fallback')).toBeNull()
+    } else {
+      expect(screen.getByText('fallback')).toBeTruthy()
+      expect(screen.queryByRole('img')).toBeNull()
+    }
   })
 
   it('rejects SVG output that sanitizes to empty content', () => {
