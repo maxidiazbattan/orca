@@ -3,7 +3,7 @@ import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { IpynbCellOutputs } from './IpynbCellOutputs'
 import { IpynbMarkdownCell, IpynbMarkdownCellEditor } from './IpynbCellEditor'
-import type { IpynbCell } from './ipynb-parse'
+import { parseIpynb, type IpynbCell } from './ipynb-parse'
 
 vi.mock('@/i18n/i18n', () => ({ translate: (_key: string, fallback: string) => fallback }))
 vi.mock('@/store', () => ({
@@ -120,6 +120,39 @@ describe('notebook rendering', () => {
       />
     )
     expect(screen.getByAltText('Chart of monthly totals')).toBeTruthy()
+  })
+
+  it('prefers gif/webp/bmp/tiff images over a text/plain fallback', () => {
+    const notebook = parseIpynb(
+      JSON.stringify({
+        nbformat: 4,
+        nbformat_minor: 5,
+        metadata: { language_info: { name: 'python' } },
+        cells: [
+          {
+            id: 'img-1',
+            cell_type: 'code',
+            metadata: {},
+            execution_count: 1,
+            source: ['plot()'],
+            outputs: [
+              {
+                output_type: 'display_data',
+                data: {
+                  'text/plain': 'fallback',
+                  'image/gif': 'R0lGODdhAQABAIAAAP///////ywAAAAAAQABAAACAkQBADs='
+                },
+                metadata: {}
+              }
+            ]
+          }
+        ]
+      })
+    )
+    expect(notebook.cells[0].outputs[0]).toMatchObject({ kind: 'display' })
+    render(<IpynbCellOutputs cell={notebook.cells[0]} />)
+    expect(screen.getByRole('img')).toBeTruthy()
+    expect(screen.queryByText('fallback')).toBeNull()
   })
 
   it('rejects SVG output that sanitizes to empty content', () => {
