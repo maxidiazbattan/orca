@@ -109,11 +109,15 @@ export default function IpynbViewer({
       if (event.repeat || !editorShortcutMatches('editor.save', event)) {
         return
       }
+      // Preview is read-only: ignore the save shortcut until editing is enabled.
+      if (!editingEnabled) {
+        return
+      }
       event.preventDefault()
       event.stopPropagation()
       void saveNotebook()
     },
-    [saveNotebook]
+    [editingEnabled, saveNotebook]
   )
 
   const handleNotebookPointerDownCapture = useCallback(

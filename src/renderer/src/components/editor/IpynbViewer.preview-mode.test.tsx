@@ -43,6 +43,7 @@ vi.mock('./IpynbCellEditor', () => ({
   IpynbRawCell: () => <div data-testid="raw-preview" />
 }))
 vi.mock('./IpynbCellOutputs', () => ({ IpynbCellOutputs: () => null }))
+vi.mock('./editor-shortcuts', () => ({ editorShortcutMatches: () => true }))
 vi.mock('./IpynbCellToolbar', () => ({
   IpynbCellToolbar: () => <div data-testid="cell-toolbar" />,
   IpynbToolbarButton: ({
@@ -135,5 +136,28 @@ describe('IpynbViewer preview mode', () => {
     expect(screen.getByText('In [3]:')).toBeTruthy()
     expect(screen.getByText('#1')).toBeTruthy()
     expect(screen.queryByTestId('cell-toolbar')).toBeNull()
+  })
+
+  it('ignores the save shortcut while in preview and honors it once editing', () => {
+    const onSave = vi.fn(async () => true)
+    const { container } = render(
+      <IpynbViewer
+        content={CONTENT}
+        fileId="notebook.ipynb"
+        filePath="/repo/notebook.ipynb"
+        worktreeId="wt-1"
+        scrollCacheKey="notebook-save-guard"
+        onContentChange={() => {}}
+        onDirtyStateHint={() => {}}
+        onSave={onSave}
+      />
+    )
+    const root = container.firstElementChild as Element
+    fireEvent.keyDown(root, { key: 's', ctrlKey: true })
+    expect(onSave).not.toHaveBeenCalled()
+
+    fireEvent.click(screen.getByLabelText('Edit'))
+    fireEvent.keyDown(root, { key: 's', ctrlKey: true })
+    expect(onSave).toHaveBeenCalledOnce()
   })
 })
