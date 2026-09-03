@@ -34,6 +34,21 @@ function sanitizeSvgImage(value: string): string | null {
   return new XMLSerializer().serializeToString(root)
 }
 
+// Strict shape check so corrupt payloads fall back to text instead of a broken <img>.
+const STRICT_BASE64_PATTERN = /^[A-Za-z0-9+/]*={0,2}$/
+
+function isDecodableBase64(value: string): boolean {
+  if (!STRICT_BASE64_PATTERN.test(value)) {
+    return false
+  }
+  try {
+    atob(value)
+  } catch {
+    return false
+  }
+  return true
+}
+
 function dataUriForImage(item: IpynbOutputItem): string | null {
   const value = valueToText(item.value).replace(/\s/g, '')
   if (!value) {
@@ -42,6 +57,9 @@ function dataUriForImage(item: IpynbOutputItem): string | null {
   if (item.mime === 'image/svg+xml') {
     const sanitized = sanitizeSvgImage(valueToText(item.value))
     return sanitized ? `data:image/svg+xml;charset=utf-8,${encodeURIComponent(sanitized)}` : null
+  }
+  if (!isDecodableBase64(value)) {
+    return null
   }
   return `data:${item.mime};base64,${value}`
 }

@@ -177,6 +177,26 @@ describe('notebook rendering', () => {
     expect(screen.getByText('SVG output unavailable')).toBeTruthy()
   })
 
+  it('falls back to text when an image payload is malformed Base64', () => {
+    render(
+      <IpynbCellOutputs
+        cell={codeCell([
+          {
+            kind: 'display',
+            outputType: 'display_data',
+            executionCount: null,
+            items: [
+              { mime: 'image/png', value: '!!!not-base64!!!' },
+              { mime: 'text/plain', value: 'fallback text' }
+            ]
+          }
+        ])}
+      />
+    )
+    expect(screen.getByText('fallback text')).toBeTruthy()
+    expect(screen.queryByRole('img')).toBeNull()
+  })
+
   it('sanitizes HTML outputs and blocks scripts, links, and remote resources', () => {
     render(
       <IpynbCellOutputs
